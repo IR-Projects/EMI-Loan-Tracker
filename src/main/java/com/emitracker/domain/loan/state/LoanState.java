@@ -1,5 +1,5 @@
 package com.emitracker.domain.loan.state;
-
+import com.emitracker.domain.LoanStatus;
 public interface LoanState {
     LoanStatus status();
 

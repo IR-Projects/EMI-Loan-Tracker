@@ -1,5 +1,5 @@
 package com.emitracker.domain.loan.state;
-
+import com.emitracker.domain.LoanStatus;
 public final class ClosedState implements LoanState {
     public static final ClosedState INSTANCE = new ClosedState();
     private ClosedState() {}

@@ -1,5 +1,5 @@
 package com.emitracker.domain.loan.state;
-
+import com.emitracker.domain.LoanStatus;
 public final class DueState implements LoanState {
     public static final DueState INSTANCE = new DueState();
     private DueState() {}
