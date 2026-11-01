@@ -18,6 +18,7 @@ payments and persistence are not built yet.
 | Rate lookup (Strategy: fixed and floating) | Done, tested |
 | Loan creation (Factory Method + Builder) | Done, tested |
 | `Schedule` / `Installment` data model | Skeleton: holds and validates a schedule, does not generate one |
+| `ScheduleLoanContext` (connects the State classes to a schedule and a calendar) | Done, tested; "paid" is tracked per installment only, no partial payments yet |
 | Amortization engine (EMI, remainder handling) | Not started |
 | Late fees and payment allocation | Not started |
 | Payments (idempotency keys, webhook, gateway adapter) | Not started |
@@ -73,7 +74,7 @@ mvn test
 
 ## Roadmap
 
-1. Real `LoanContext` implementation backed by a schedule
+1. ~~Real `LoanContext` implementation backed by a schedule~~ (done: `ScheduleLoanContext`)
 2. Amortization engine (EMI formula; last installment absorbs the rounding remainder)
 3. Late fees (grace period, fixed and daily-accruing) and payment allocation (fees → interest → principal)
 4. Payment processing with idempotency keys, behind an adapter, with retry and circuit breaker

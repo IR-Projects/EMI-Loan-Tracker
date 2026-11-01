@@ -157,7 +157,8 @@ transition (`getState`, `setState`, `auditTransition`). Splitting it into a read
 interface and a transition interface is a reasonable later cleanup.
 
 **D: Dependency Inversion.** The states depend on the `LoanContext` abstraction, not on `Loan`,
-`Schedule` or a database, so they are tested with a `FakeLoanContext`. The domain package imports
+`Schedule` or a database, so they are tested with a `FakeLoanContext`. `ScheduleLoanContext` is
+the real implementation, and the same states run unchanged against it. The domain package imports
 no framework classes (no Spring, no JPA), keeping it testable without a container, as the
 architecture decision requires.
 
@@ -165,8 +166,11 @@ architecture decision requires.
 
 ## 3. Known gaps
 
-- **`Loan` is not yet wired to the state objects.** It stores a plain `LoanStatus`; no class
-  implements `LoanContext` yet. That implementation depends on the schedule and payment work.
+- **`Loan` is not yet wired to the state objects.** It still stores a plain `LoanStatus`. The
+  states are driven by `ScheduleLoanContext` (a schedule, the set of paid installments, and
+  "today"), which is where the lifecycle now lives; connecting a `Loan` to a context is part of
+  the application-service work. "Paid" is per whole installment, so partial payments and fee
+  allocation will replace that bookkeeping later.
 - **`RateStrategy` is not yet used by anything outside its own package and tests.** `Loan` stores
   `interestRateBps` and a `RateType`; the amortization engine is where a strategy will be injected.
 - **`Schedule` and `Installment` are skeletons.** They enforce invariants but nothing generates a
