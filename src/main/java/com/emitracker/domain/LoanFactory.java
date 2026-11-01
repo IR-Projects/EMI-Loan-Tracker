@@ -62,20 +62,21 @@ public class LoanFactory {
 
         Objects.requireNonNull(userId, "userId must not be null");
 
-        return new Loan(
-                UUID.randomUUID(),
-                userId,
-                name,
-                description,
-                principal,
-                interestRateBps,
-                tenureMonths,
-                dueDayOfMonth,
-                gracePeriodDays,
-                startDate,
-                lenderName,
-                rateType,
-                LoanStatus.ACTIVE
-        );
+        // The factory decides *what kind* of loan to make (rate type, starting status);
+        // the builder takes care of assembling the many fields.
+        return Loan.builder()
+                .userId(userId)
+                .name(name)
+                .description(description)
+                .principal(principal)
+                .interestRateBps(interestRateBps)
+                .tenureMonths(tenureMonths)
+                .dueDayOfMonth(dueDayOfMonth)
+                .gracePeriodDays(gracePeriodDays)
+                .startDate(startDate)
+                .lenderName(lenderName)
+                .rateType(rateType)
+                .status(LoanStatus.ACTIVE)
+                .build();
     }
 }

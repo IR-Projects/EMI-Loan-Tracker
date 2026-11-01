@@ -82,6 +82,11 @@ public final class Loan {
     }
 
 
+    /** Starts a {@link LoanBuilder}; prefer it over the 13-argument constructor. */
+    public static LoanBuilder builder() {
+        return new LoanBuilder();
+    }
+
         public UUID getId() {
         return id;
     }

@@ -1,8 +1,8 @@
 # Architecture Decision: Layered + Event-Driven Loan/EMI Tracker
 
-**Status:** Proposed  
+**Status:** Accepted  
 **Deciders:** Person A, Person B  
-**Date:** 2026-10-09
+**Date:** 2026-10-09 (last updated 2026-11-01)
 
 ## Context
 
@@ -86,7 +86,12 @@ Negative:
 
 ## Sprint A justification
 
-This satisfies the requirement for an architectural style chosen and justified in writing. It also supports the required patterns: State for loan lifecycle, Factory Method for loan/schedule creation, and Facade/Adapter for engine and gateway boundaries. The presentation layer is included to satisfy the professor's UI requirement.
+This satisfies the requirement for an architectural style chosen and justified in writing. It also supports the required patterns:
+
+- **Implemented:** State (loan lifecycle), Strategy (rate lookup), Factory Method (loan creation by rate type), Builder (assembling a `Loan` from its many fields).
+- **Planned:** Facade (amortization engine boundary) and Adapter (payment gateway boundary).
+
+The presentation layer is included to satisfy the professor's UI requirement. See `docs/solid-design.md` for how the SOLID principles map onto the code that exists today.
 
 ## ADR Candidates
 
