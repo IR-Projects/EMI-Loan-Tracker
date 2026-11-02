@@ -1,13 +1,18 @@
 package com.emitracker.domain.schedule;
 
-import com.emitracker.domain.*;
-import org.junit.jupiter.api.Test;
-
 import java.time.LocalDate;
 import java.util.Currency;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import org.junit.jupiter.api.Test;
+
+import com.emitracker.domain.Loan;
+import com.emitracker.domain.LoanStatus;
+import com.emitracker.domain.Money;
+import com.emitracker.domain.RateType;
 
 class AmortizationEngineTest {
 
@@ -93,4 +98,64 @@ class AmortizationEngineTest {
         // 31 Ocak + 3 Ay = 30 Nisan
         assertEquals(LocalDate.of(2026, 4, 30), schedule.getInstallments().get(2).dueDate());
     }
+
+        @Test
+    void regenerate_withPrepayment_PreservesPaidAndRecalculatesRemaining() {
+        // 120.000 kuruş (1200 TL), 12 ay, faizsiz (%0)
+        Loan loan = createLoan(120_000, 12, 0, LocalDate.of(2026, 1, 1));
+        Schedule originalSchedule = engine.generate(loan);
+
+        // Kullanıcı ilk 3 taksiti ödemiş olsun (3 * 10.000 = 30.000 kuruş anapara ödendi)
+        int paidCount = 3;
+        
+        // Kalan anapara: 90.000 kuruş. Kullanıcı 30.000 kuruş daha ön ödeme yapıyor.
+        Money prepayment = Money.ofMinor(30_000, Currency.getInstance("TRY"));
+
+        Schedule newSchedule = engine.regenerate(loan, originalSchedule, paidCount, prepayment, loan.getInterestRateBps());
+
+        // 1. Toplam taksit sayısı hala 12 olmalı (3 ödenmiş + 9 yeni)
+        assertEquals(12, newSchedule.size());
+
+        // 2. Ödenmiş taksitler (ilk 3) orijinal planla birebir aynı olmalı (Değişmemeli)
+        assertEquals(originalSchedule.getInstallments().get(0), newSchedule.getInstallments().get(0));
+        assertEquals(originalSchedule.getInstallments().get(2), newSchedule.getInstallments().get(2));
+
+        // 3. Kalan anapara 60.000 kuruş (120k - 30k ödenen - 30k ön ödeme) 9 aya bölünmeli.
+        // 60.000 / 9 = 6666.66... (faizsiz olduğu için 6666 ve son taksit 6666 + kalan 6)
+        // İlk 3 taksit geçmiş, 4. taksit (index 3) yeni planın ilk taksiti olmalı.
+        long fourthInstallmentPrincipal = newSchedule.getInstallments().get(3).principal().minorUnits();
+        assertEquals(6666, fourthInstallmentPrincipal);
+
+        // 4. Kredinin toplam anaparası hala 120.000 kuruş olmalı
+        assertEquals(90_000, newSchedule.totalPrincipal().minorUnits());
+
+        // 5. Son taksitten sonra bakiye 0 olmalı
+        assertEquals(0, newSchedule.getInstallments().get(11).balanceAfter().minorUnits());
+    }
+
+    @Test
+    void regenerate_throwsExceptionIfPrepaymentExceedsRemainingPrincipal() {
+        Loan loan = createLoan(120_000, 12, 0, LocalDate.of(2026, 1, 1));
+        Schedule originalSchedule = engine.generate(loan);
+
+        // Kalan anapara 90.000 kuruş ama 100.000 kuruş ön ödeme yapılmaya çalışılıyor.
+        Money excessivePrepayment = Money.ofMinor(100_000, Currency.getInstance("TRY"));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> 
+            engine.regenerate(loan, originalSchedule, 3, excessivePrepayment, loan.getInterestRateBps())
+        );
+        assertNotNull(ex);
+    }
+
+    @Test
+    void regenerate_returnsOriginalScheduleIfFullyPaid() {
+        Loan loan = createLoan(120_000, 12, 0, LocalDate.of(2026, 1, 1));
+        Schedule originalSchedule = engine.generate(loan);
+
+        // 12 taksitin hepsi ödenmişse (paidCount >= schedule.size())
+        Schedule newSchedule = engine.regenerate(loan, originalSchedule, 12, Money.zero(Currency.getInstance("TRY")), loan.getInterestRateBps());
+
+        assertEquals(originalSchedule, newSchedule);
+    }
+    
 }

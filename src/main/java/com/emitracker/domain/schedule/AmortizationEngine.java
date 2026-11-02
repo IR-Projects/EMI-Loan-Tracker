@@ -22,8 +22,8 @@ public class AmortizationEngine {
         // 1. Aylık sabit ödeme tutarını (EMI) hesapla
         Money fixedEmi = calculateEmi(loan);
 
-                for (int i = 1; i <= n; i++) {
-            // Vade tarihini hesapla (LocalDate 31. günü otomatik olarak bir sonraki ayın son gününe ayarlar)
+        for (int i = 1; i <= n; i++) {
+            // Vade tarihini hesapla
             LocalDate dueDate = startDate.plusMonths(i);
             
             // 2. O ayki faiz tutarını hesapla
@@ -53,6 +53,83 @@ public class AmortizationEngine {
         }
 
         return new Schedule(loan.getId(), installments);
+    }
+
+    /**
+     * Regenerates the remaining installments of a loan after a prepayment or an interest rate change.
+     * Paid installments are preserved exactly as they were.
+     */
+    public Schedule regenerate(
+            Loan originalLoan, 
+            Schedule oldSchedule, 
+            int paidInstallmentsCount, 
+            Money prepayment, 
+            int newInterestRateBps) {
+
+        if (paidInstallmentsCount >= oldSchedule.size()) {
+            // Loan is fully paid off.
+            return oldSchedule;
+        }
+
+        // 1. Find the remaining principal
+        Money remainingPrincipal;
+        if (paidInstallmentsCount == 0) {
+            remainingPrincipal = originalLoan.getPrincipal();
+        } else {
+            remainingPrincipal = oldSchedule.getInstallments().get(paidInstallmentsCount - 1).balanceAfter();
+        }
+
+        // 2. Apply prepayment (if any)
+        Money newPrincipal = remainingPrincipal.minus(prepayment);
+        if (newPrincipal.isNegative() || newPrincipal.isZero()) {
+            throw new IllegalArgumentException("Prepayment cannot be equal to or greater than the remaining principal");
+        }
+
+        // 3. Calculate remaining tenure and new start date
+        int remainingTenure = originalLoan.getTenureMonths() - paidInstallmentsCount;
+        LocalDate nextStartDate = originalLoan.getStartDate().plusMonths(paidInstallmentsCount);
+
+        // 4. Create a new Loan instance. 
+        // (Using the full constructor since we don't have a withStartDate() method)
+        Loan newLoan = new Loan(
+                originalLoan.getId(),
+                originalLoan.getUserId(),
+                originalLoan.getName(),
+                originalLoan.getDescription(),
+                newPrincipal,
+                newInterestRateBps,
+                remainingTenure,
+                originalLoan.getDueDayOfMonth(),
+                originalLoan.getGracePeriodDays(),
+                nextStartDate,
+                originalLoan.getLenderName(),
+                originalLoan.getRateType(),
+                originalLoan.getStatus()
+        );
+
+        // 5. Generate the new remaining schedule
+        Schedule newRemainingSchedule = generate(newLoan);
+
+        // 6. Combine paid installments and new installments
+        List<Installment> combinedInstallments = new ArrayList<>();
+        
+        // Add the paid installments exactly as they were
+        for (int i = 0; i < paidInstallmentsCount; i++) {
+            combinedInstallments.add(oldSchedule.getInstallments().get(i));
+        }
+
+        // Add the newly generated installments, shifting their numbers
+        for (Installment newInst : newRemainingSchedule.getInstallments()) {
+            combinedInstallments.add(new Installment(
+                    newInst.number() + paidInstallmentsCount,
+                    newInst.dueDate(),
+                    newInst.principal(),
+                    newInst.interest(),
+                    newInst.balanceAfter()
+            ));
+        }
+
+        return new Schedule(originalLoan.getId(), combinedInstallments);
     }
 
     private Money calculateEmi(Loan loan) {
